@@ -13,7 +13,7 @@ def circuit_drawer(circuit, filename,
     """Saves circuit to pdf
 
     Parameters:
-        circuit (QuantumCircuit, DAGCircuit, Qasm): input circuit
+        circuit (QuantumCircuit, DAGCircuit, Qasm): input circuit, better in Qasm format
         filename (str): filename to write pdf, file extension not needed
         basis (str): optional comma-separated list of gate names
         scale (float): image scaling
@@ -98,8 +98,8 @@ def save_results(robj, filename, directory='Data/'):
     """
     results = order_results(robj)
     os.makedirs(os.path.dirname(directory), exist_ok=True)
-    os.makedirs(os.path.dirname(filename), exist_ok=True)
-    out_f = open(filename, 'w')
+    os.makedirs(os.path.dirname(directory + filename), exist_ok=True)
+    out_f = open(directory + filename, 'w')
     out_f.write('VALUES\t\tCOUNTS\n\n')
     for value, count in results.items():
         out_f.write(value + '\t' + str(count) + '\n')
