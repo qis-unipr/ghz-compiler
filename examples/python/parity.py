@@ -1,3 +1,5 @@
+import os, sys
+sys.path.append(os.path.abspath('../..'))
 from compiler.compiler import Compiler
 from compiler.backends import *
 from compiler.utility import circuit_drawer, order_results, save_results
@@ -10,7 +12,7 @@ compiler = Compiler(get_coupling(qx5))
 #
 # Remember that if the backend has 16 qubit, parity will run on 15 qubits because one is used as ancilla
 cobj = compiler.compile(15, qx5, algo='parity', oracle='10')
-# To draw circuit without running it, uncomment next line and comment the other two
+# To draw circuit without running it, uncomment next line and comment the others
 # circuit_drawer(cobj['circuit'], filename='parity')
 robj = compiler.run(cobj, backend=qx5)
 circuit_drawer(robj['ran_qasm'], filename='parity_10')
