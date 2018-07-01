@@ -127,14 +127,14 @@ class Compiler(object):
         # inverts it to sastisfy couplings if needed
         if target in self._coupling_map[control]:
             circuit.cx(control_qubit, target_qubit)
-            logger.debug('Connected qubit %d to qubit %d with cnot gate', control_qubit, target_qubit)
+            logger.debug('Connected qubit %d to qubit %d with cnot gate', control, target)
         elif control in self._coupling_map[target]:
             circuit.u2(0, pi, control_qubit)
             circuit.u2(0, pi, target_qubit)
             circuit.cx(target_qubit, control_qubit)
             circuit.u2(0, pi, control_qubit)
             circuit.u2(0, pi, target_qubit)
-            logger.debug('Connected qubit %d to qubit %d with inverse cnot gate', control_qubit, target_qubit)
+            logger.debug('Connected qubit %d to qubit %d with inverse cnot gate', control, target)
         else:
             exit(3)
 
