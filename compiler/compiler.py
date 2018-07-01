@@ -342,6 +342,8 @@ class Compiler(object):
         cobj = dict()
 
         if algo == 'parity':
+            if n_qubits > len(self._path)-1:
+                exit(6)
             n_qubits += 1
 
         if algo == 'ghz':
@@ -357,7 +359,10 @@ class Compiler(object):
         connected = self._sort_connected(cobj['connected'], algo=algo)
         cobj['connected'] = connected
         cobj['qasm'] = QASM_source
-        cobj['oracle'] = self.set_oracle(oracle, n_qubits, custom_mode=custom_mode)
+        if custom_mode is False:
+            cobj['oracle'] = self.set_oracle(oracle, n_qubits)
+        else:
+            cobj['oracle'] = oracle
         if compiling is True:
             cobj['compiled'] = compile(cobj['circuit'], backend)
         else:
