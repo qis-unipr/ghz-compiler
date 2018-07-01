@@ -258,9 +258,10 @@ class Compiler(object):
                     pred = e[0]
                 if dag_circuit.multi_graph.node[pred]['name'] == 'u2' and dag_circuit.multi_graph.node[pred][
                         'params'] == [0, pi]:
+                    logger.debug('Two consecutive Hadamard gates on qubit %s removed',
+                                 str(dag_circuit.multi_graph.node[pred]['qargs']))
                     dag_circuit._remove_op_node(pred)
                     dag_circuit._remove_op_node(node)
-                    logger.debug('Two consecutive Hadamard gates on qubit %s removed', str(dag_circuit.multi_graph.node[pred]['qargs']))
         return circuit_from_qasm_string(dag_circuit.qasm())
 
     @staticmethod
