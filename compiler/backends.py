@@ -1,6 +1,13 @@
+import logging
+from logging.config import fileConfig
+from os import path
+
 from qiskit import register, get_backend
 
 from compiler import config
+
+logger = logging.getLogger(__name__)
+fileConfig(path.join(path.dirname(path.abspath(__file__)), 'logging.ini'))
 
 qx2 = 'ibmqx2'
 

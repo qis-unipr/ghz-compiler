@@ -1,9 +1,15 @@
+import logging
+from logging.config import fileConfig
 import os
 import subprocess
+from os import path
 
 from qiskit import qasm, unroll, QuantumCircuit
 from qiskit.dagcircuit import DAGCircuit
 from qiskit.tools.visualization import QCircuitImage
+
+logger = logging.getLogger(__name__)
+fileConfig(path.join(path.dirname(path.abspath(__file__)), 'logging.ini'))
 
 
 def circuit_drawer(circuit, filename,
