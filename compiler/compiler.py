@@ -10,6 +10,9 @@ from sympy import pi
 
 from compiler.backends import *
 
+logger = logging.getLogger(__name__)
+fileConfig(path.join(path.dirname(path.abspath(__file__)), 'logging.ini'))
+
 
 class Compiler(object):
     """Compiler class
@@ -66,12 +69,14 @@ class Compiler(object):
         for node in graph:
             if node not in inverse_graph:
                 inverse_graph.update({node: []})
+        logger.debug('inverse coupling map: %s', str(inverse_graph))
 
     @staticmethod
     def _find_max(ranks):
         # Returns the node with highest rank
         most_connected = max(ranks.items(), key=operator.itemgetter(1))[0]
         found = [most_connected, ranks[most_connected]]
+        logger.debug('Node with highest rank is %d, with rank %d', found[0], found[1])
         return found
 
     def _create_path(self, start, inverse_map, ranks):
@@ -90,8 +95,11 @@ class Compiler(object):
                     for node in inverse_map[inv]:
                         if node in to_connect:
                             to_connect.append(inv)
+                            logger.debug('Found inverse path to node %d', inv)
+                            logger.debug('to connect: %s', str(to_connect))
                             del ranks[inv]
                             self._path.update({inv: node})
+                            logger.debug('path: %s', str(self._path))
                             updated = True
                             count -= 1
                             break
@@ -101,27 +109,32 @@ class Compiler(object):
                 for node in inverse_map[to_connect[visiting]]:
                     if node not in self._path:
                         self._path.update({node: to_connect[visiting]})
+                        logger.debug('path: %s', str(self._path))
                         del ranks[node]
                         count -= 1
                         if node not in to_connect:
                             to_connect.append(node)
+                            logger.debug('to connect: %s', str(to_connect))
                         if count <= 0:
                             break
                 visiting += 1
                 if visiting == len(to_connect):
                     updated = False
+                    logger.debug('No more direct paths to explore, searching an inverse one')
 
     def _cx(self, circuit, control_qubit, target_qubit, control, target):
         # Places a cnot gate between the control and target qubit,
         # inverts it to sastisfy couplings if needed
         if target in self._coupling_map[control]:
             circuit.cx(control_qubit, target_qubit)
+            logger.debug('Connected qubit %d to qubit %d with cnot gate', control_qubit, target_qubit)
         elif control in self._coupling_map[target]:
             circuit.u2(0, pi, control_qubit)
             circuit.u2(0, pi, target_qubit)
             circuit.cx(target_qubit, control_qubit)
             circuit.u2(0, pi, control_qubit)
             circuit.u2(0, pi, target_qubit)
+            logger.debug('Connected qubit %d to qubit %d with inverse cnot gate', control_qubit, target_qubit)
         else:
             exit(3)
 
@@ -185,6 +198,7 @@ class Compiler(object):
         # Creates the circuit based on input parameters
         stop = 0
         if custom_mode is False and len(oracle) != 2:
+            logger.critical('custom mode set to False but oracle %s is not a known alias', oracle)
             exit(5)
         elif custom_mode is False and len(oracle) == 2:
             stop = n_qubits // 2
@@ -197,6 +211,7 @@ class Compiler(object):
 
         max_qubits = len(self._path)
         if max_qubits < self._n_qubits:
+            logger.critical('Maximum qubits allowed for backend is %d but n_qubits = %d', max_qubits, n_qubits)
             exit(2)
 
         self._connected.clear()
@@ -245,6 +260,7 @@ class Compiler(object):
                         'params'] == [0, pi]:
                     dag_circuit._remove_op_node(pred)
                     dag_circuit._remove_op_node(node)
+                    logger.debug('Two consecutive Hadamard gates on qubit %s removed', str(dag_circuit.multi_graph.node[pred]['qargs']))
         return circuit_from_qasm_string(dag_circuit.qasm())
 
     @staticmethod
@@ -257,7 +273,7 @@ class Compiler(object):
             return list(zip(*sorted(connected.items(), key=operator.itemgetter(0))))[0]
 
     def set_size(self, backend, n_qubits):
-        """CHeck fi number of qubits is consistent with backend and set register size accordingly
+        """Checks if number of qubits is consistent with backend and set register size accordingly
 
         Parameters:
             backend (str): backend name
@@ -271,15 +287,18 @@ class Compiler(object):
             if n_qubits <= 5:
                 size = 5
             else:
+                logger.critical('Maximum qubits allowed for %s backend is 5 but n_qubits = %d', backend, n_qubits)
                 exit(1)
         elif backend == qx3 or backend == qx5:
             if n_qubits <= 16:
                 size = 16
             else:
+                logger.critical('Maximum qubits allowed for %s backend is 16 but n_qubits = %d', backend, n_qubits)
                 exit(4)
         elif backend == online_sim or backend == local_sim:
             size = len(self._coupling_map)
         else:
+            logger.critical('Backend %s not known', backend)
             exit(5)
         return size
 
@@ -310,7 +329,7 @@ class Compiler(object):
         return oracle
 
     def compile(self, n_qubits, backend=local_sim, algo='ghz', oracle='11', custom_mode=False, compiling=False):
-        """Compiles circuit accordingly with input parameters
+        """Compiles circuit according to input parameters
 
         Parameters:
             n_qubits (int): number of qubits used in circuit
@@ -348,12 +367,16 @@ class Compiler(object):
 
         if algo == 'ghz':
             cobj = self._create(circuit, quantum_r, classical_r, n_qubits, x=False)
+            logger.info('Created ghz circuit')
         elif algo == 'envariance':
             cobj = self._create(circuit, quantum_r, classical_r, n_qubits)
+            logger.info('Created envariance circuit')
         elif algo == 'parity':
             cobj = self._create(circuit, quantum_r, classical_r, n_qubits, x=False, oracle=oracle,
                                 custom_mode=custom_mode)
+            logger.info('Created parity circuit')
         else:
+            logger.critical('algorithm %s not recognized', algo)
             exit(6)
         QASM_source = cobj['circuit'].qasm()
         connected = self._sort_connected(cobj['connected'], algo=algo)
@@ -369,6 +392,8 @@ class Compiler(object):
             cobj['compiled'] = compile(cobj['circuit'], backend, skip_transpiler=True)
         cobj['circuit'] = circuit_from_qasm_string(cobj['compiled']['circuits'][0]['compiled_circuit_qasm'])
         cobj['algo'] = algo
+        logger.info('Circuit compiled')
+        logger.debug('cobj: %s', str(cobj))
         return cobj
 
     def run(self, cobj, backend=local_sim, shots=1024, max_credits=5):
@@ -397,6 +422,7 @@ class Compiler(object):
         try:
             register(config.APItoken, config.URL)  # set the APIToken and API url
         except ConnectionError:
+            logger.error('Error connecting to provider', exc_info=True)
             sleep(300)
             return self.run(cobj['circuit'], backend, shots, max_credits)
 
@@ -408,9 +434,11 @@ class Compiler(object):
                     while get_backend(backend).status['available'] is False:
                         sleep(300)
             except ConnectionError:
+                logger.error('Error connecting to provider', exc_info=True)
                 sleep(300)
                 continue
             except ValueError:
+                logger.error('Error in communication with provider', exc_info=True)
                 sleep(300)
                 continue
             break
@@ -418,6 +446,7 @@ class Compiler(object):
         api = IBMQuantumExperience(config.APItoken)
 
         while api.get_my_credits()['remaining'] < 5:
+            logger.warning('Less than 5 credits remaining, waiting for replenishment')
             sleep(900)
         try:
             backend = wrapper.get_backend(backend)
@@ -427,16 +456,20 @@ class Compiler(object):
             lapse = 0
             interval = 10
             while not job.done:
+                logger.debug('%s', job.status)
                 sleep(interval)
                 lapse += 1
+            logger.debug('%s', job.status)
             result = job.result()
         except QISKitError:
+            logger.error('Error getting results from backend', exc_info=True)
             sleep(900)
             return self.run(cobj, backend, shots, max_credits)
 
         try:
             counts = result.get_counts()
         except QISKitError:
+            logger.error('Error reading results', exc_info=True)
             return self.run(cobj['circuit']['compiled'], backend, shots, max_credits)
 
         sorted_c = sorted(counts.items(), key=operator.itemgetter(1), reverse=True)
@@ -451,4 +484,6 @@ class Compiler(object):
             'algo': cobj['algo'],
             'backend': backend
         }
+        logger.info('Circuit successfully ran on %s backend', backend)
+        logger.debug('robj: %s', str(robj))
         return robj
