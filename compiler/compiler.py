@@ -450,10 +450,11 @@ class Compiler(object):
             logger.warning('Less than 5 credits remaining, waiting for replenishment')
             sleep(900)
         try:
-            backend = wrapper.get_backend(backend)
-            q_job = QuantumJob(cobj['compiled'], backend=backend, preformatted=True, resources={
+            base_backend = wrapper.get_backend(backend)
+            q_job = QuantumJob(cobj['compiled'], backend=base_backend, preformatted=True, resources={
                 'max_credits': max_credits})
-            job = backend.run(q_job)
+            job = base_backend.run(q_job)
+            logger.info('Circuit running on %s backend', backend)
             lapse = 0
             interval = 10
             while not job.done:
