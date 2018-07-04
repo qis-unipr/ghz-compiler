@@ -6,7 +6,7 @@ from os import path
 
 from qiskit import qasm, unroll, QuantumCircuit
 from qiskit.dagcircuit import DAGCircuit
-from qiskit.tools.visualization import QCircuitImage
+from qiskit.tools.visualization._circuit_visualization import QCircuitImage
 
 logger = logging.getLogger(__name__)
 fileConfig(path.join(path.dirname(path.abspath(__file__)), 'logging.ini'))

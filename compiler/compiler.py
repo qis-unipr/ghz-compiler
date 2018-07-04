@@ -1,9 +1,10 @@
 import operator
+from concurrent.futures import CancelledError, TimeoutError
 from time import sleep
 
 from IBMQuantumExperience import IBMQuantumExperience
-from qiskit import QuantumRegister, ClassicalRegister, QuantumCircuit, compile, wrapper, \
-    QuantumJob, QISKitError
+from qiskit import QuantumRegister, ClassicalRegister, QuantumCircuit, compile, QISKitError, available_backends
+from qiskit.backends.ibmq.ibmqjob import IBMQJobError
 from qiskit.dagcircuit import DAGCircuit
 from qiskit.wrapper._circuittoolkit import circuit_from_qasm_string
 from sympy import pi
@@ -46,7 +47,7 @@ class Compiler(object):
                 self._explore(source, next, visited, ranks)
 
     def _start_explore(self, graph, ranks):
-        # Starts exploring the graph aasign a rank to nodes,
+        # Starts exploring the graph assign a rank to nodes,
         # node rank is based on how many other nodes can reach the node
         visited = dict()
         for node in range(len(graph)):
@@ -329,7 +330,7 @@ class Compiler(object):
                     oracle += '0'
         return oracle
 
-    def compile(self, n_qubits, backend=local_sim, algo='ghz', oracle='11', custom_mode=False, compiling=False):
+    def compile(self, n_qubits, backend=online_sim, algo='ghz', oracle='11', custom_mode=False, compiling=False):
         """Compiles circuit according to input parameters
 
         Parameters:
@@ -397,7 +398,7 @@ class Compiler(object):
         logger.debug('cobj: %s', str(cobj))
         return cobj
 
-    def run(self, cobj, backend=local_sim, shots=1024, max_credits=5):
+    def run(self, cobj, backend=online_sim, shots=1024, max_credits=5):
         """Runs circuit on backend
 
         Parameters:
@@ -420,13 +421,6 @@ class Compiler(object):
                                 result: result of running the circuit
                                 counts: result counts, sorted in descending order}
         """
-        try:
-            register(config.APItoken, config.URL)  # set the APIToken and API url
-        except ConnectionError:
-            logger.error('Error connecting to provider', exc_info=True)
-            sleep(300)
-            return self.run(cobj['circuit'], backend, shots, max_credits)
-
         while True:
             try:
                 backend_status = get_backend(backend).status
@@ -434,36 +428,37 @@ class Compiler(object):
                         or ('busy' in backend_status and backend_status['busy'] is True):
                     while get_backend(backend).status['available'] is False:
                         sleep(300)
-            except ConnectionError:
-                logger.error('Error connecting to provider', exc_info=True)
-                sleep(300)
-                continue
-            except ValueError:
-                logger.error('Error in communication with provider', exc_info=True)
+            except (ConnectionError, ValueError, KeyError):
+                logger.error('Error getting backend status', exc_info=True)
                 sleep(300)
                 continue
             break
 
         api = IBMQuantumExperience(config.APItoken)
 
-        while api.get_my_credits()['remaining'] < 5:
+        min_credits = 0
+        if shots > 1024:
+            min_credits = 5
+        else:
+            min_credits = 3
+
+        while api.get_my_credits()['remaining'] < min_credits:
             logger.warning('Less than 5 credits remaining, waiting for replenishment')
             sleep(900)
         try:
-            base_backend = wrapper.get_backend(backend)
-            q_job = QuantumJob(cobj['compiled'], backend=base_backend, preformatted=True, resources={
-                'max_credits': max_credits})
-            job = base_backend.run(q_job)
+            base_backend = get_backend(backend)
+            cobj['compiled']['config']['backend_name'] = base_backend.configuration['name']
+            job = base_backend.run(cobj['compiled'])
             logger.info('Circuit running on %s backend', backend)
             lapse = 0
             interval = 10
             while not job.done:
-                logger.debug('%s', job.status)
+                logger.info('Status @ {} seconds: \n%s'.format(interval * lapse), job.status)
                 sleep(interval)
                 lapse += 1
-            logger.debug('%s', job.status)
+            logger.info('Status @ {} seconds: \n%s'.format(interval * lapse), job.status)
             result = job.result()
-        except QISKitError:
+        except (QISKitError, IBMQJobError, TimeoutError, CancelledError):
             logger.error('Error getting results from backend', exc_info=True)
             sleep(900)
             return self.run(cobj, backend, shots, max_credits)

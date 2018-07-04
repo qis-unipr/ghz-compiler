@@ -1,8 +1,12 @@
-import os, sys
+import os
+import sys
 sys.path.append(os.path.abspath('../..'))
+
 from compiler.compiler import Compiler
 from compiler.backends import *
-from compiler.utility import circuit_drawer, order_results, save_results
+from compiler.utility import circuit_drawer, save_results, order_results
+
+logging.getLogger('compiler.compiler').setLevel(logging.DEBUG)
 
 compiler = Compiler(get_coupling(qx5))
 # Oracle can be specified by alias:
@@ -22,3 +26,4 @@ save_results(robj, 'parity_10.txt', directory='Data/parity_10/')
 # Oracle can also be explicitly set if custom_mode is True
 cobj = compiler.compile(15, qx5, algo='parity', oracle='101101011010011', custom_mode=True)
 circuit_drawer(cobj['qasm'], filename='parity_10')
+robj = compiler.run(cobj, backend=online_sim)

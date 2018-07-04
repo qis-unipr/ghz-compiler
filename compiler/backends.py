@@ -31,7 +31,7 @@ def get_coupling(backend):
     Returns:
         coupling_map (dict): backend coupling map
     """
-    register(config.APItoken, config.URL)
+    # register(config.APItoken, config.URL)
     configuration = get_backend(backend).configuration
     couplings = configuration['coupling_map']
     coupling_map = dict()

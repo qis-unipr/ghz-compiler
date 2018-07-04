@@ -1,5 +1,7 @@
-import os, sys
+import os
+import sys
 sys.path.append(os.path.abspath('../..'))
+
 from compiler.compiler import Compiler
 from compiler.backends import *
 from compiler.utility import circuit_drawer, order_results, save_results
