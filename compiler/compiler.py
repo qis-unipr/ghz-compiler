@@ -4,6 +4,7 @@ from time import sleep
 
 from IBMQuantumExperience import IBMQuantumExperience
 from qiskit import QuantumRegister, ClassicalRegister, QuantumCircuit, compile, QISKitError, available_backends
+from qiskit.backends import JobStatus
 from qiskit.backends.ibmq.ibmqjob import IBMQJobError
 from qiskit.dagcircuit import DAGCircuit
 from qiskit.wrapper._circuittoolkit import circuit_from_qasm_string
@@ -455,9 +456,13 @@ class Compiler(object):
             interval = 10
             while not job.done:
                 logger.info('Status @ {} seconds: \n%s'.format(interval * lapse), job.status)
+                if job.status['status'] == JobStatus.ERROR:
+                    return self.run(cobj, backend, shots, max_credits)
                 sleep(interval)
                 lapse += 1
             logger.info('Status @ {} seconds: \n%s'.format(interval * lapse), job.status)
+            if job.status['status'] == JobStatus.ERROR:
+                return self.run(cobj, backend, shots, max_credits)
             result = job.result()
         except (QISKitError, IBMQJobError, TimeoutError, CancelledError):
             logger.error('Error getting results from backend', exc_info=True)
