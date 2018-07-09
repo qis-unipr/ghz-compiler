@@ -3,11 +3,11 @@ from concurrent.futures import CancelledError, TimeoutError
 from time import sleep
 
 from IBMQuantumExperience import IBMQuantumExperience
-from qiskit import QuantumRegister, ClassicalRegister, QuantumCircuit, compile, QISKitError, available_backends
+from qiskit import QuantumRegister, ClassicalRegister, QuantumCircuit, compile, QISKitError
 from qiskit.backends import JobStatus
 from qiskit.backends.ibmq.ibmqjob import IBMQJobError
 from qiskit.dagcircuit import DAGCircuit
-from qiskit.wrapper._circuittoolkit import circuit_from_qasm_string
+from qiskit.wrapper import load_qasm_string
 from sympy import pi
 
 from compiler.backends import *
@@ -264,7 +264,7 @@ class Compiler(object):
                                  str(dag_circuit.multi_graph.node[pred]['qargs']))
                     dag_circuit._remove_op_node(pred)
                     dag_circuit._remove_op_node(node)
-        return circuit_from_qasm_string(dag_circuit.qasm())
+        return load_qasm_string(dag_circuit.qasm())
 
     @staticmethod
     def _sort_connected(connected, algo='ghz'):
@@ -393,7 +393,7 @@ class Compiler(object):
             cobj['compiled'] = compile(cobj['circuit'], backend)
         else:
             cobj['compiled'] = compile(cobj['circuit'], backend, skip_transpiler=True)
-        cobj['circuit'] = circuit_from_qasm_string(cobj['compiled']['circuits'][0]['compiled_circuit_qasm'])
+        cobj['circuit'] = load_qasm_string(cobj['compiled']['circuits'][0]['compiled_circuit_qasm'])
         cobj['algo'] = algo
         logger.info('Circuit compiled')
         logger.debug('cobj: %s', str(cobj))
@@ -477,7 +477,7 @@ class Compiler(object):
 
         sorted_c = sorted(counts.items(), key=operator.itemgetter(1), reverse=True)
         robj = {
-            'circuit': circuit_from_qasm_string(result.get_ran_qasm(result.get_names()[0])),
+            'circuit': load_qasm_string(result.get_ran_qasm(result.get_names()[0])),
             'n_qubits': cobj['n_qubits'],
             'connected': cobj['connected'],
             'oracle': cobj['oracle'],

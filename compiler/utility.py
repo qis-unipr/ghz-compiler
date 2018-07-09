@@ -4,57 +4,48 @@ import os
 import subprocess
 from os import path
 
-from qiskit import qasm, unroll, QuantumCircuit
+from qiskit import load_qasm_string
 from qiskit.dagcircuit import DAGCircuit
-from qiskit.tools.visualization._circuit_visualization import QCircuitImage
+from qiskit.qasm import Qasm
+from qiskit.tools.visualization import generate_latex_source
 
 logger = logging.getLogger(__name__)
 fileConfig(path.join(path.dirname(path.abspath(__file__)), 'logging.ini'))
 
 
-def circuit_drawer(circuit, filename,
-                   basis="id,u0,u1,u2,u3,x,y,z,h,s,sdg,t,tdg,rx,ry,rz,"
-                         "cx,cy,cz,ch,crz,cu1,cu3,swap,ccx,cswap",
-                   scale=0.5):
+def circuit_drawer(circuit, filename, directory=None):
     """Saves circuit to pdf
 
     Parameters:
         circuit (QuantumCircuit, DAGCircuit, Qasm): input circuit, better in Qasm format
         filename (str): filename to write pdf, file extension not needed
-        basis (str): optional comma-separated list of gate names
-        scale (float): image scaling
     """
     if isinstance(circuit, DAGCircuit):
-        circuit = circuit.qasm()
-    elif isinstance(circuit, QuantumCircuit):
-        circuit = circuit.qasm()
-    ast = qasm.Qasm(data=circuit).parse()
-    if basis:
-        # Split basis only if it is not the empty string.
-        basis = basis.split(',')
-    u = unroll.Unroller(ast, unroll.JsonBackend(basis))
-    u.execute()
-    json_circuit = u.backend.circuit
-    qcimg = QCircuitImage(json_circuit, scale)
-    latex = qcimg.latex()
-    if filename:
-        with open(filename+'.tex', 'w') as latex_file:
-            latex_file.write(latex)
-    cmd = ['pdflatex', '-interaction', 'nonstopmode', filename+'.tex']
+        circuit = load_qasm_string(circuit.qasm())
+    elif isinstance(circuit, str):
+        circuit = load_qasm_string(circuit)
+    elif isinstance(circuit, Qasm):
+        circuit = load_qasm_string(circuit.parse())
+    if directory is None:
+        directory = ''
+    generate_latex_source(circuit, directory+filename + '.tex',
+                          basis="id,u0,u1,u2,u3,x,y,z,h,s,sdg,t,tdg,rx,ry,rz,""cx,cy,cz,ch,crz,cu1,cu3,swap,ccx,cswap",
+                          scale=0.5)
+    if directory == '':
+        cmd = ['pdflatex', '-interaction', 'nonstopmode', '%s.tex' % filename]
+    else:
+        cmd = ['pdflatex', '-interaction', 'nonstopmode', '-output-directory', directory, '%s.tex' % filename]
     proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL)
     proc.communicate()
 
     retcode = proc.returncode
     if not retcode == 0:
-        os.unlink(filename+'.pdf')
         raise ValueError('Error {} executing command: {}'.format(retcode, ' '.join(cmd)))
-
-    os.unlink(filename+'.tex')
-    os.unlink(filename+'.log')
-    os.unlink(filename+'.toc')
-    os.unlink(filename+'.snm')
-    os.unlink(filename+'.nav')
-    os.unlink(filename+'.aux')
+    os.unlink('%s.log' % (directory+filename))
+    os.unlink('%s.toc' % (directory+filename))
+    os.unlink('%s.snm' % (directory+filename))
+    os.unlink('%s.nav' % (directory+filename))
+    os.unlink('%s.aux' % (directory+filename))
 
 
 def order_results(robj):
@@ -73,11 +64,11 @@ def order_results(robj):
     for count in counts:
         reverse = count[0][::-1]
         if robj['algo'] != 'parity':
-                sorted_v = []
-                for n in range(robj['n_qubits'] - stop):
-                    sorted_v.append(reverse[connected[n + stop]])
-                for n in range(stop):
-                    sorted_v.append(reverse[connected[n]])
+            sorted_v = []
+            for n in range(robj['n_qubits'] - stop):
+                sorted_v.append(reverse[connected[n + stop]])
+            for n in range(stop):
+                sorted_v.append(reverse[connected[n]])
         else:
             sorted_v = [reverse[connected[0]]]
             one = 1
