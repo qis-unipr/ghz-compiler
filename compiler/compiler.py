@@ -370,17 +370,15 @@ class Compiler(object):
 
         if algo == 'ghz':
             cobj = self._create(circuit, quantum_r, classical_r, n_qubits, x=False)
-            logger.info('Created ghz circuit')
         elif algo == 'envariance':
             cobj = self._create(circuit, quantum_r, classical_r, n_qubits)
-            logger.info('Created envariance circuit')
         elif algo == 'parity':
             cobj = self._create(circuit, quantum_r, classical_r, n_qubits, x=False, oracle=oracle,
                                 custom_mode=custom_mode)
-            logger.info('Created parity circuit')
         else:
             logger.critical('algorithm %s not recognized', algo)
             exit(6)
+        logger.info('Created %s circuit for %s backend with %d qubit', algo, backend, n_qubits)
         QASM_source = cobj['circuit'].qasm()
         connected = self._sort_connected(cobj['connected'], algo=algo)
         cobj['connected'] = connected
@@ -395,7 +393,7 @@ class Compiler(object):
             cobj['compiled'] = compile(cobj['circuit'], backend, skip_transpiler=True)
         cobj['circuit'] = load_qasm_string(cobj['compiled']['circuits'][0]['compiled_circuit_qasm'])
         cobj['algo'] = algo
-        logger.info('Circuit compiled')
+        logger.info('Compiled %s circuit for %s backend with %d qubit', algo, backend, n_qubits)
         logger.debug('cobj: %s', str(cobj))
         return cobj
 
