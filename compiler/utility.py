@@ -30,7 +30,7 @@ def circuit_drawer(circuit, filename, directory=None):
         directory = ''
     generate_latex_source(circuit, directory+filename + '.tex',
                           basis="id,u0,u1,u2,u3,x,y,z,h,s,sdg,t,tdg,rx,ry,rz,""cx,cy,cz,ch,crz,cu1,cu3,swap,ccx,cswap",
-                          scale=0.5)
+                          scale=0.8)
     if directory == '':
         cmd = ['pdflatex', '-interaction', 'nonstopmode', '%s.tex' % filename]
     else:
