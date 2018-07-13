@@ -1,6 +1,10 @@
+import os
 import operator
-from concurrent.futures import CancelledError, TimeoutError
 from time import sleep
+import pickle
+from concurrent.futures import CancelledError, TimeoutError
+import pkg_resources
+from sympy import pi
 
 from IBMQuantumExperience import IBMQuantumExperience
 from qiskit import QuantumRegister, ClassicalRegister, QuantumCircuit, compile, QISKitError
@@ -8,9 +12,9 @@ from qiskit.backends import JobStatus
 from qiskit.backends.ibmq.ibmqjob import IBMQJobError
 from qiskit.dagcircuit import DAGCircuit
 from qiskit.wrapper import load_qasm_string
-from sympy import pi
 
 from compiler.backends import *
+from compiler import config
 
 logger = logging.getLogger(__name__)
 fileConfig(path.join(path.dirname(path.abspath(__file__)), 'logging.ini'))
@@ -20,23 +24,45 @@ class Compiler(object):
     """Compiler class
     TODO More detailed class description
     """
-    def __init__(self, coupling_map):
+
+    def __init__(self, backend_info):
         # Class constructor
-        self._coupling_map = dict()
+        self._coupling_map = backend_info['coupling_map'].copy()
         self._inverse_coupling_map = dict()
         self._path = dict()
         self._n_qubits = 0
         self._ranks = dict()
         self._connected = dict()
         self._most_connected = []
-        if coupling_map:
-            self._coupling_map = coupling_map.copy()
-            self._invert_graph(coupling_map, self._inverse_coupling_map)
-            self._start_explore(self._coupling_map, self._ranks)
-            self._most_connected = self._find_max(self._ranks)
-            self._create_path(self._most_connected[0], inverse_map=self._inverse_coupling_map,
-                              ranks=sorted(self._ranks.items(), key=operator.itemgetter(1), reverse=True))
+        self.__pickle_data = None
+        if backend_info['coupling_map']:
+            if os.path.isfile(pkg_resources.resource_filename(__name__, 'trees/' + backend_info['backend_name'] + '.p')):
+                print('Found pickle')
+                pickle_file = open(pkg_resources.resource_filename(__name__, 'trees/' + backend_info['backend_name'] + '.p'), 'rb')
+                self.__pickle_data = pickle.load(pickle_file)
+                print(self.__pickle_data)
+                pickle_file.close()
+            if self.__pickle_data is None or backend_info['coupling_map'] != self.__pickle_data['coupling_map']:
+                self._invert_graph(backend_info['coupling_map'], self._inverse_coupling_map)
+                self._start_explore(self._coupling_map, self._ranks)
+                self._most_connected = self._find_max(self._ranks)
+                self._spanning_tree(self._most_connected[0], inverse_map=self._inverse_coupling_map,
+                                    ranks=sorted(self._ranks.items(), key=operator.itemgetter(1), reverse=True))
+                pickle_file = open(pkg_resources.resource_filename(__name__, 'trees/' + backend_info['backend_name'] + '.p'), 'wb')
+                pickle.dump({'coupling_map': self._coupling_map,
+                             'inverse_coupling_map': self._inverse_coupling_map,
+                             'path': self._path,
+                             'ranks': self._ranks,
+                             'most_connected': self._most_connected}, pickle_file)
+                pickle_file.close()
+            else:
+                print('pickle used')
+                self._inverse_coupling_map = self.__pickle_data['inverse_coupling_map']
+                self._path = self.__pickle_data['path']
+                self._ranks = self.__pickle_data['ranks']
+                self._most_connected = self.__pickle_data['most_connected']
         else:
+            logger.critical('Missing coupling map')
             exit(1)
 
     def _explore(self, source, visiting, visited, ranks):
@@ -81,7 +107,7 @@ class Compiler(object):
         logger.debug('Node with highest rank is %d, with rank %d', found[0], found[1])
         return found
 
-    def _create_path(self, start, inverse_map, ranks):
+    def _spanning_tree(self, start, inverse_map, ranks):
         # Creates a list of edges to follow when compiling a circuit
         ranks = dict(ranks)
         self._path.update({start: -1})
@@ -253,13 +279,14 @@ class Compiler(object):
         dag_circuit = DAGCircuit.fromQuantumCircuit(circuit)
         h = dag_circuit.get_named_nodes('u2')
         for node in h:
-            if dag_circuit.multi_graph.node[node] is not None and dag_circuit.multi_graph.node[node]['params'] == [0, pi]:
+            if dag_circuit.multi_graph.node[node] is not None and dag_circuit.multi_graph.node[node]['params'] == [0,
+                                                                                                                   pi]:
                 edge = dag_circuit.multi_graph.in_edges(node)
                 pred = []
                 for e in edge:
                     pred = e[0]
                 if dag_circuit.multi_graph.node[pred]['name'] == 'u2' and dag_circuit.multi_graph.node[pred][
-                        'params'] == [0, pi]:
+                    'params'] == [0, pi]:
                     logger.debug('Two consecutive Hadamard gates on qubit %s removed',
                                  str(dag_circuit.multi_graph.node[pred]['qargs']))
                     dag_circuit._remove_op_node(pred)
@@ -364,7 +391,7 @@ class Compiler(object):
         cobj = dict()
 
         if algo == 'parity':
-            if n_qubits > len(self._path)-1:
+            if n_qubits > len(self._path) - 1:
                 exit(6)
             n_qubits += 1
 
