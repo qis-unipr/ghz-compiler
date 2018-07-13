@@ -1,8 +1,22 @@
-import logging
-from logging.config import fileConfig
+# Copyright 2018, Davide Ferrari and Michele Amoretti
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import os
 import subprocess
 from os import path
+import logging
+from logging.config import fileConfig
 
 from qiskit import load_qasm_string
 from qiskit.dagcircuit import DAGCircuit
@@ -19,6 +33,7 @@ def circuit_drawer(circuit, filename, directory=None):
     Parameters:
         circuit (QuantumCircuit, DAGCircuit, Qasm): input circuit, better in Qasm format
         filename (str): filename to write pdf, file extension not needed
+        directory (str): directory where the circuit will be saved
     """
     if isinstance(circuit, DAGCircuit):
         circuit = load_qasm_string(circuit.qasm())

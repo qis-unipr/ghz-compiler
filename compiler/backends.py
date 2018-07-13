@@ -1,10 +1,22 @@
+# Copyright 2018, Davide Ferrari and Michele Amoretti
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+from os import path
 import logging
 from logging.config import fileConfig
-from os import path
 
-from qiskit import register, get_backend
-
-from compiler import config
+from qiskit import get_backend
 
 logger = logging.getLogger(__name__)
 fileConfig(path.join(path.dirname(path.abspath(__file__)), 'logging.ini'))
@@ -39,4 +51,7 @@ def get_coupling(backend):
         coupling_map.update({n: []})
     for coupling in couplings:
         coupling_map[coupling[0]].append(coupling[1])
-    return coupling_map
+    return {
+        'backend_name': backend,
+        'coupling_map': coupling_map
+    }
