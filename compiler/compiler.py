@@ -491,7 +491,7 @@ class Compiler(object):
             sleep(900)
         try:
             base_backend = get_backend(backend)
-            cobj['compiled']['config']['backend_name'] = base_backend.configuration['name']
+            cobj['compiled']['config']['backend_name'] = backend
             cobj['compiled']['config']['shots'] = shots
             job = base_backend.run(cobj['compiled'])
             logger.info('Circuit running on %s backend', backend)
