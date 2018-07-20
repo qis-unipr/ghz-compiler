@@ -17,6 +17,9 @@ import operator
 from time import sleep
 import pickle
 from concurrent.futures import CancelledError, TimeoutError
+from requests.exceptions import ConnectionError
+from urllib3.exceptions import MaxRetryError, NewConnectionError
+from socket import gaierror
 import pkg_resources
 from sympy import pi
 
@@ -512,7 +515,7 @@ class Compiler(object):
                 logger.error('Job encountered an error, retrying.')
                 return self.run(cobj, backend, shots, max_credits)
             result = job.result()
-        except (QISKitError, IBMQJobError, TimeoutError, CancelledError, Exception):
+        except (QISKitError, IBMQJobError, TimeoutError, CancelledError, LookupError, ConnectionError, NewConnectionError, MaxRetryError, gaierror):
             logger.error('Error getting results from backend', exc_info=True)
             sleep(900)
             return self.run(cobj, backend, shots, max_credits)
