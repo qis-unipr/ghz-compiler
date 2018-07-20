@@ -501,7 +501,7 @@ class Compiler(object):
             while not job.done:
                 if not initialized:
                     logger.info('Status @ {} seconds: \n%s'.format(interval * lapse), job.status)
-                    if job.status != JobStatus.INITIALIZING:
+                    if job.status['status'] != JobStatus.INITIALIZING:
                         initialized = True
                 else:
                     logger.debug('Status @ {} seconds: \n%s'.format(interval * lapse), job.status)
