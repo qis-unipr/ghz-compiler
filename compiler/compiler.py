@@ -17,13 +17,13 @@ import operator
 from time import sleep
 import pickle
 from concurrent.futures import CancelledError, TimeoutError
-from requests.exceptions import ConnectionError
+from requests.exceptions import ConnectionError, HTTPError
 from urllib3.exceptions import MaxRetryError, NewConnectionError
 from socket import gaierror
 import pkg_resources
 from sympy import pi
 
-from IBMQuantumExperience import IBMQuantumExperience
+from IBMQuantumExperience import IBMQuantumExperience, ApiError
 from qiskit import QuantumRegister, ClassicalRegister, QuantumCircuit, compile, QISKitError
 from qiskit.backends import JobStatus
 from qiskit.backends.ibmq.ibmqjob import IBMQJobError
@@ -515,7 +515,7 @@ class Compiler(object):
                 logger.error('Job encountered an error, retrying.')
                 return self.run(cobj, backend, shots, max_credits)
             result = job.result()
-        except (QISKitError, IBMQJobError, TimeoutError, CancelledError, LookupError, ConnectionError, NewConnectionError, MaxRetryError, gaierror):
+        except (QISKitError, IBMQJobError, TimeoutError, CancelledError, LookupError, ConnectionError, NewConnectionError, MaxRetryError, HTTPError, ApiError, gaierror):
             logger.error('Error getting results from backend', exc_info=True)
             sleep(900)
             return self.run(cobj, backend, shots, max_credits)
