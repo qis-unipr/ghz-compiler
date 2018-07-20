@@ -70,7 +70,7 @@ class Compiler(object):
                              'most_connected': self._most_connected}, pickle_file)
                 pickle_file.close()
             else:
-                print('pickle used')
+                logger.debug("Using saved spanning tree")
                 self._inverse_coupling_map = self.__pickle_data['inverse_coupling_map']
                 self._path = self.__pickle_data['path']
                 self._ranks = self.__pickle_data['ranks']
@@ -406,6 +406,7 @@ class Compiler(object):
 
         if algo == 'parity':
             if n_qubits > len(self._path) - 1:
+                logger.critical('Too much qubits for backend %s, max qubits allowed is %d', backend, len(self._path) - 1)
                 exit(6)
             n_qubits += 1
 
@@ -418,7 +419,7 @@ class Compiler(object):
                                 custom_mode=custom_mode)
         else:
             logger.critical('algorithm %s not recognized', algo)
-            exit(6)
+            exit(7)
         logger.info('Created %s circuit for %s backend with %d qubit', algo, backend, n_qubits)
         QASM_source = cobj['circuit'].qasm()
         connected = self._sort_connected(cobj['connected'], algo=algo)
@@ -493,17 +494,25 @@ class Compiler(object):
             logger.info('Circuit running on %s backend', backend)
             lapse = 0
             interval = 10
+            initialized = False
             while not job.done:
-                logger.info('Status @ {} seconds: \n%s'.format(interval * lapse), job.status)
+                if not initialized:
+                    logger.info('Status @ {} seconds: \n%s'.format(interval * lapse), job.status)
+                    if job.status != JobStatus.INITIALIZING:
+                        initialized = True
+                else:
+                    logger.debug('Status @ {} seconds: \n%s'.format(interval * lapse), job.status)
                 if job.status['status'] == JobStatus.ERROR:
+                    logger.error('Job encountered an error, retrying.')
                     return self.run(cobj, backend, shots, max_credits)
                 sleep(interval)
                 lapse += 1
             logger.info('Status @ {} seconds: \n%s'.format(interval * lapse), job.status)
             if job.status['status'] == JobStatus.ERROR:
+                logger.error('Job encountered an error, retrying.')
                 return self.run(cobj, backend, shots, max_credits)
             result = job.result()
-        except (QISKitError, IBMQJobError, TimeoutError, CancelledError):
+        except (QISKitError, IBMQJobError, TimeoutError, CancelledError, Exception):
             logger.error('Error getting results from backend', exc_info=True)
             sleep(900)
             return self.run(cobj, backend, shots, max_credits)
