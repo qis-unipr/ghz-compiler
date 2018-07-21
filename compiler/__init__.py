@@ -11,10 +11,26 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import logging
+from logging.config import fileConfig
+from os import path
+from time import sleep
+from requests.exceptions import HTTPError
 
 from qiskit import register
+from IBMQuantumExperience.IBMQuantumExperience import ApiError
 
 from compiler import config
 
+logger = logging.getLogger(__name__)
+fileConfig(path.join(path.dirname(path.abspath(__file__)), 'logging.ini'))
+
 # set the APIToken and API url
-register(config.APItoken, config.URL)
+while True:
+    try:
+        register(config.APItoken, config.URL)
+    except (HTTPError, ApiError):
+        logger.error('Authentication error')
+        sleep(60)
+        continue
+    break
