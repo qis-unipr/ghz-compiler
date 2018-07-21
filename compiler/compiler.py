@@ -54,10 +54,8 @@ class Compiler(object):
         self.__pickle_data = None
         if backend_info['coupling_map']:
             if os.path.isfile(pkg_resources.resource_filename(__name__, 'trees/' + backend_info['backend_name'] + '.p')):
-                print('Found pickle')
                 pickle_file = open(pkg_resources.resource_filename(__name__, 'trees/' + backend_info['backend_name'] + '.p'), 'rb')
                 self.__pickle_data = pickle.load(pickle_file)
-                print(self.__pickle_data)
                 pickle_file.close()
             if self.__pickle_data is None or backend_info['coupling_map'] != self.__pickle_data['coupling_map']:
                 self._invert_graph(backend_info['coupling_map'], self._inverse_coupling_map)
@@ -478,7 +476,15 @@ class Compiler(object):
                 continue
             break
 
-        api = IBMQuantumExperience(config.APItoken)
+        while True:
+            try:
+                api = IBMQuantumExperience(config.APItoken)
+            except (HTTPError, ApiError):
+                logger.error('Authentication error', exc_info=True)
+                sleep(60)
+                continue
+            break
+
 
         min_credits = 0
         if shots > 1024:
