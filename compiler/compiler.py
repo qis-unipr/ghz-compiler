@@ -23,7 +23,8 @@ from socket import gaierror
 import pkg_resources
 from sympy import pi
 
-from IBMQuantumExperience import IBMQuantumExperience, ApiError
+from IBMQuantumExperience import IBMQuantumExperience
+from IBMQuantumExperience.IBMQuantumExperience import ApiError
 from qiskit import QuantumRegister, ClassicalRegister, QuantumCircuit, compile, QISKitError
 from qiskit.backends import JobStatus
 from qiskit.backends.ibmq.ibmqjob import IBMQJobError
@@ -471,7 +472,7 @@ class Compiler(object):
                     while get_backend(backend).status['available'] is False:
                         sleep(300)
             except (ConnectionError, ValueError, KeyError):
-                logger.error('Error getting backend status', exc_info=True)
+                logger.error('Error getting backend status')
                 sleep(300)
                 continue
             break
@@ -480,7 +481,7 @@ class Compiler(object):
             try:
                 api = IBMQuantumExperience(config.APItoken)
             except (HTTPError, ApiError):
-                logger.error('Authentication error', exc_info=True)
+                logger.error('Authentication error')
                 sleep(60)
                 continue
             break
@@ -522,14 +523,14 @@ class Compiler(object):
                 return self.run(cobj, backend, shots, max_credits)
             result = job.result()
         except (QISKitError, IBMQJobError, TimeoutError, CancelledError, LookupError, ConnectionError, NewConnectionError, MaxRetryError, HTTPError, ApiError, gaierror):
-            logger.error('Error getting results from backend', exc_info=True)
+            logger.error('Error getting results from backend')
             sleep(900)
             return self.run(cobj, backend, shots, max_credits)
 
         try:
             counts = result.get_counts()
         except QISKitError:
-            logger.error('Error reading results', exc_info=True)
+            logger.error('Error reading results')
             return self.run(cobj['circuit']['compiled'], backend, shots, max_credits)
 
         sorted_c = sorted(counts.items(), key=operator.itemgetter(1), reverse=True)
