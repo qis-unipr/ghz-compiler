@@ -516,12 +516,14 @@ class Compiler(object):
                             queued = True
                         else:
                             running = True
-                elif queued is False or running is False:
-                    logger.info('Status @ {} seconds: \n%s'.format(interval * lapse), job.status)
+                elif queued is False:
                     if job.status['status'] == JobStatus.QUEUED:
-                        queued = True
-                    else:
+                        logger.info('Status @ {} seconds: \n%s'.format(interval * lapse), job.status)
+                elif running is False:
+                    if job.status['status'] == JobStatus.RUNNING:
                         running = True
+                        queued = True
+                        logger.info('Status @ {} seconds: \n%s'.format(interval * lapse), job.status)
                 else:
                     logger.debug('Status @ {} seconds: \n%s'.format(interval * lapse), job.status)
                 if job.status['status'] == JobStatus.ERROR or job.status['status'] == JobStatus.CANCELLED:
