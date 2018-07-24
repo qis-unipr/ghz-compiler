@@ -505,25 +505,39 @@ class Compiler(object):
             lapse = 0
             interval = 10
             initialized = False
+            queued = False
+            running = False
             while not job.done:
                 if not initialized:
                     logger.info('Status @ {} seconds: \n%s'.format(interval * lapse), job.status)
                     if job.status['status'] != JobStatus.INITIALIZING:
                         initialized = True
+                        if job.status['status'] == JobStatus.QUEUED:
+                            queued = True
+                        else:
+                            running = True
+                elif queued is False or running is False:
+                    logger.info('Status @ {} seconds: \n%s'.format(interval * lapse), job.status)
+                    if job.status['status'] == JobStatus.QUEUED:
+                        queued = True
+                    else:
+                        running = True
                 else:
                     logger.debug('Status @ {} seconds: \n%s'.format(interval * lapse), job.status)
-                if job.status['status'] == JobStatus.ERROR:
+                if job.status['status'] == JobStatus.ERROR or job.status['status'] == JobStatus.CANCELLED:
                     logger.error('Job encountered an error, retrying.')
+                    logger.debug(job.exception)
                     return self.run(cobj, backend, shots, max_credits)
                 sleep(interval)
                 lapse += 1
             logger.info('Status @ {} seconds: \n%s'.format(interval * lapse), job.status)
-            if job.status['status'] == JobStatus.ERROR:
-                logger.error('Job encountered an error, retrying.')
+            if job.status['status'] == JobStatus.ERROR or job.status['status'] == JobStatus.CANCELLED:
+                logger.error('Job encountered an error or was cancelled.')
+                logger.debug(job.exception)
                 return self.run(cobj, backend, shots, max_credits)
             result = job.result()
         except (QISKitError, IBMQJobError, TimeoutError, CancelledError, LookupError, ConnectionError, NewConnectionError, MaxRetryError, HTTPError, ApiError, gaierror):
-            logger.error('Error getting results from backend')
+            logger.error('Error executing job', exc_info=True)
             sleep(900)
             return self.run(cobj, backend, shots, max_credits)
 
