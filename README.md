@@ -1,2 +1,2 @@
 # QuantumComputing
-Quantum algorithms implemented by means of [IBM QISKit](https://github.com/QISKit/qiskit-core).
+Quantum algorithms implemented by means of [IBM QISKit](https://github.com/Qiskit/qiskit-terra).
