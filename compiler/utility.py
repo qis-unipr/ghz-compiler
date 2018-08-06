@@ -63,7 +63,7 @@ def circuit_drawer(circuit, filename, directory=None):
     os.unlink('%s.aux' % (directory+filename))
 
 
-def order_results(robj):
+def _order_results(robj):
     """Converts execution results to correct format, based on oracle
 
     Parameters:
@@ -100,15 +100,15 @@ def order_results(robj):
     return results
 
 
-def save_results(robj, filename, directory='Data/'):
+def save_results(results, filename, directory='Data/'):
     """Saves execution results to file
 
     Parameters:
-        robj (dict): ran object
+        results (dict): dictionary of value:counts
         filename (str): file name
         directory (str): directory where the file will be written
     """
-    results = order_results(robj)
+    # results = order_results(robj)
     os.makedirs(os.path.dirname(directory), exist_ok=True)
     os.makedirs(os.path.dirname(directory + filename), exist_ok=True)
     out_f = open(directory + filename, 'w')

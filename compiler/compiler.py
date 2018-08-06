@@ -32,7 +32,7 @@ from qiskit.dagcircuit import DAGCircuit
 from qiskit.wrapper import load_qasm_string
 
 from compiler.backends import *
-from compiler import config
+from compiler import config, utility
 
 logger = logging.getLogger(__name__)
 fileConfig(path.join(path.dirname(path.abspath(__file__)), 'logging.ini'))
@@ -47,7 +47,7 @@ class Compiler(object):
         # Class constructor
         self._coupling_map = backend_info['coupling_map'].copy()
         self._inverse_coupling_map = dict()
-        self._path = dict()
+        self._tree = dict()
         self._n_qubits = 0
         self._ranks = dict()
         self._connected = dict()
@@ -67,14 +67,14 @@ class Compiler(object):
                 pickle_file = open(pkg_resources.resource_filename(__name__, 'trees/' + backend_info['backend_name'] + '.p'), 'wb')
                 pickle.dump({'coupling_map': self._coupling_map,
                              'inverse_coupling_map': self._inverse_coupling_map,
-                             'path': self._path,
+                             'path': self._tree,
                              'ranks': self._ranks,
                              'most_connected': self._most_connected}, pickle_file)
                 pickle_file.close()
             else:
                 logger.debug("Using saved spanning tree")
                 self._inverse_coupling_map = self.__pickle_data['inverse_coupling_map']
-                self._path = self.__pickle_data['path']
+                self._tree = self.__pickle_data['path']
                 self._ranks = self.__pickle_data['ranks']
                 self._most_connected = self.__pickle_data['most_connected']
         else:
@@ -126,7 +126,7 @@ class Compiler(object):
     def _spanning_tree(self, start, inverse_map, ranks):
         # Creates a list of edges to follow when compiling a circuit
         ranks = dict(ranks)
-        self._path.update({start: -1})
+        self._tree.update({start: -1})
         del ranks[start]
         to_connect = [start]
         max = len(self._coupling_map)
@@ -142,8 +142,8 @@ class Compiler(object):
                             logger.debug('Found inverse path to node %d', inv)
                             logger.debug('to connect: %s', str(to_connect))
                             del ranks[inv]
-                            self._path.update({inv: node})
-                            logger.debug('path: %s', str(self._path))
+                            self._tree.update({inv: node})
+                            logger.debug('path: %s', str(self._tree))
                             updated = True
                             count -= 1
                             break
@@ -151,9 +151,9 @@ class Compiler(object):
                         break
             if count > 0:
                 for node in inverse_map[to_connect[visiting]]:
-                    if node not in self._path:
-                        self._path.update({node: to_connect[visiting]})
-                        logger.debug('path: %s', str(self._path))
+                    if node not in self._tree:
+                        self._tree.update({node: to_connect[visiting]})
+                        logger.debug('path: %s', str(self._tree))
                         del ranks[node]
                         count -= 1
                         if node not in to_connect:
@@ -253,17 +253,17 @@ class Compiler(object):
 
         self._n_qubits = n_qubits
 
-        max_qubits = len(self._path)
+        max_qubits = len(self._tree)
         if max_qubits < self._n_qubits:
             logger.critical('Maximum qubits allowed for backend is %d but n_qubits = %d', max_qubits, n_qubits)
             exit(2)
 
         self._connected.clear()
         count = self._n_qubits
-        for qubit in self._path:
+        for qubit in self._tree:
             if count <= 0:
                 break
-            self._connected.update({qubit: self._path[qubit]})
+            self._connected.update({qubit: self._tree[qubit]})
             count -= 1
         self._place_h(circuit, self._most_connected[0], quantum_r, x=x)
         if custom_mode is False:
@@ -407,8 +407,8 @@ class Compiler(object):
         cobj = dict()
 
         if algo == 'parity':
-            if n_qubits > len(self._path) - 1:
-                logger.critical('Too much qubits for backend %s, max qubits allowed is %d', backend, len(self._path) - 1)
+            if n_qubits > len(self._tree) - 1:
+                logger.critical('Too much qubits for backend %s, max qubits allowed is %d', backend, len(self._tree) - 1)
                 exit(6)
             n_qubits += 1
 
@@ -561,6 +561,7 @@ class Compiler(object):
             'algo': cobj['algo'],
             'backend': backend
         }
+        robj['results'] = utility._order_results(robj)
         logger.info('Circuit successfully ran on %s backend', backend)
         logger.debug('robj: %s', str(robj))
         return robj
