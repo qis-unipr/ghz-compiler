@@ -18,14 +18,16 @@ sys.path.append(os.path.abspath('../..'))
 
 from compiler.compiler import Compiler
 from compiler.backends import *
-from compiler.utility import circuit_drawer, order_results, save_results
+from compiler.utility import circuit_drawer, save_results
+
+logging.getLogger('compiler.compiler').setLevel(logging.DEBUG)
 
 compiler = Compiler(get_coupling(qx5))
 # It's possible to compile and run on a simulator instead of a real backend, if you want
-cobj = compiler.compile(16, online_sim)
+cobj = compiler.compile(16, qx5)
 # To draw circuit without running it, uncomment next line and comment the others
 # circuit_drawer(cobj['circuit'], filename='ghz')
-robj = compiler.run(cobj, backend=online_sim)
+robj = compiler.run(cobj, backend=qx5, shots=10)
 circuit_drawer(robj['ran_qasm'], filename='ghz')
-results = order_results(robj)
-save_results(robj, 'ghz.txt', directory='Data/ghz/')
+results = robj['results']
+save_results(results, 'ghz.txt', directory='Data/ghz/')
